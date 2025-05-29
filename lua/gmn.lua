@@ -1,10 +1,10 @@
 -- lua/gmn.lua
 --
--- last update: 2025.03.04.
+-- last update: 2025.05.29.
 
 -- plugin modules
 local config = require("gmn/config")
-local net = require("gmn/net")
+local generation = require("gmn/generation")
 
 local M = {}
 
@@ -13,10 +13,10 @@ function M.setup(opts)
 	config.override(opts)
 end
 
--- generate text parts with given prompts and return them
-function M.generate(prompts)
+-- generate and return text with given prompts
+function M.generate_text(prompts)
 	local parts = {}
-	local res, err = net.request_content_generation(prompts)
+	local res, err = generation.text(prompts)
 
 	if err == nil then
 		-- take the first candidate,

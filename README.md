@@ -39,7 +39,7 @@ and create a JSON config file at path `configFilepath` with following content:
 }
 ```
 
-## Usage
+## Usage (with command)
 
 ### Text Generation
 
@@ -104,6 +104,15 @@ Select a range of text with visual block, and run following command:
 then it will generate a commit message from the selected range,
 
 and replace the range with the generated one.
+
+## Usage (with lua)
+
+```lua
+local generated, err = require("gmn").generate_text({ "hello, ", "how are you doing?" })
+if err == nil then
+  print(vim.inspect(generated))
+end
+```
 
 ## Todos / Improvements
 
