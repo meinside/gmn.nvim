@@ -2,7 +2,10 @@
 --
 -- Gemini plugin for neovim
 --
--- last update: 2025.03.04.
+-- last update: 2025.05.29.
+
+local cmdGenerateText = "GeminiGenerate"
+local cmdGenerateGitCommitLog = "GeminiGenerateGitCommitLog"
 
 local gmn = require("gmn")
 local config = require("gmn/config")
@@ -32,18 +35,18 @@ end
 -- :'<,'>GeminiGenerate [prompt]
 --   replace selected range with generated content from the given prompt
 --
-vim.api.nvim_create_user_command("GeminiGenerate", function(opts)
-	debug("opts of command `GeminiGenerate`: " .. vim.inspect(opts))
+vim.api.nvim_create_user_command(cmdGenerateText, function(opts)
+	debug(string.format("opts of `:%s`: %s", cmdGenerateText, vim.inspect(opts)))
 
 	-- generate texts with given prompt,
 	if opts.range == 0 then -- if there was no selected range,
 		if #opts.fargs > 0 then
-			debug("using command parameter as a prompt: " .. opts.fargs[1])
+			debug(string.format("using command parameter as a prompt: %s", opts.fargs[1]))
 
 			-- do the generation
-			local parts, err = gmn.generate({ opts.fargs[1] })
+			local parts, err = gmn.generate_text({ opts.fargs[1] })
 			if err ~= nil then
-				error(err)
+				error(string.format("Error: %s", err))
 			else
 				-- strip outermost codeblock
 				if config.options.stripOutermostCodeblock() then
@@ -67,18 +70,18 @@ vim.api.nvim_create_user_command("GeminiGenerate", function(opts)
 
 		local prompts = {}
 		if selected ~= nil then
-			debug("using selected range as a prompt: " .. selected)
+			debug(string.format("using selected range as a prompt: %s", selected))
 
 			table.insert(prompts, selected)
 		end
 		if #opts.fargs > 0 then
-			debug("using command parameter as a prompt: " .. opts.fargs[1])
+			debug(string.format("using command parameter as a prompt: %s", opts.fargs[1]))
 
 			table.insert(prompts, opts.fargs[1])
 		end
 
 		-- do the generation
-		local parts, err = gmn.generate(prompts)
+		local parts, err = gmn.generate_text(prompts)
 		if err ~= nil then
 			error(err)
 		else
@@ -104,21 +107,28 @@ end, { range = true, nargs = "?" })
 -- :'<,'>GeminiGenerateGitCommitLog
 --   replace selected range with generated git commit log from the selected range as a prompt
 --
-vim.api.nvim_create_user_command("GeminiGenerateGitCommitLog", function(opts)
-	debug("opts of command `GeminiGenerateGitCommitLog`: " .. vim.inspect(opts))
+vim.api.nvim_create_user_command(cmdGenerateGitCommitLog, function(opts)
+	debug(string.format("opts of `:%s`: %s", cmdGenerateGitCommitLog, vim.inspect(opts)))
 
-	local prompt =
-		"Please generate a nice git commit message adhering to the Conventional Commits v1.0.0 specification:\n\n"
+	local promptPrefix = [====[
+Generate an excellent git commit message using the following code changes,
+adhering to the conventional commits v1.0.0 specification.
+Ensure that there is no code block surrounding your response,
+that there is a blank line between the header and the body,
+and that each line of body is no longer than approximately 80 bytes:
+
+
+]====]
 
 	-- generate texts with given prompt,
 	if opts.range == 0 then -- if there was no selected range,
 		local text = util.execute_command("git diff HEAD")
-		local prompts = { prompt .. text }
+		local prompts = { promptPrefix .. text }
 
-		debug("using prompt: " .. prompts[1])
+		debug(string.format("using prompt: %s", prompts[1]))
 
 		-- do the generation
-		local parts, err = gmn.generate(prompts)
+		local parts, err = gmn.generate_text(prompts)
 		if err ~= nil then
 			error(err)
 		else
@@ -137,20 +147,20 @@ vim.api.nvim_create_user_command("GeminiGenerateGitCommitLog", function(opts)
 
 		local prompts = {}
 		if selected ~= nil then
-			debug("using selected range as a prompt: " .. selected)
+			debug(string.format("using selected range as a prompt: %s", selected))
 
-			table.insert(prompts, prompt .. selected)
+			table.insert(prompts, promptPrefix .. selected)
 		end
 		if #opts.fargs > 0 then
-			debug("using command parameter as a prompt: " .. opts.fargs[1])
+			debug(string.format("using command parameter as a prompt: %s", opts.fargs[1]))
 
-			table.insert(prompts, prompt .. opts.fargs[1])
+			table.insert(prompts, promptPrefix .. opts.fargs[1])
 		end
 
 		-- do the generation
-		local parts, err = gmn.generate(prompts)
+		local parts, err = gmn.generate_text(prompts)
 		if err ~= nil then
-			error(err)
+			error(string.format("Error: %s", err))
 		else
 			-- split lines
 			local lines = util.split_lines(parts)

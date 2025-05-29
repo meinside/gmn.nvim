@@ -1,8 +1,8 @@
--- lua/gmn/net.lua
+-- lua/gmn/generation.lua
 --
--- Network module
+-- Generation module
 --
--- last update: 2025.03.04.
+-- last update: 2025.05.29.
 
 -- external dependencies
 local curl = require("plenary/curl")
@@ -26,7 +26,8 @@ local M = {}
 local function system_instruction(model)
 	return string.format(
 		[====[
-You are a neovim plugin for generating texts using Google Gemini API(model: %s).
+You are a neovim plugin named `gmn.nvim` developed for generating various kinds of media,
+using Google Gemini API(model: %s).
 
 Current datetime is %s.
 
@@ -51,13 +52,14 @@ local function safety_settings(threshold)
 		{ category = "HARM_CATEGORY_HATE_SPEECH", threshold = threshold },
 		{ category = "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold = threshold },
 		{ category = "HARM_CATEGORY_DANGEROUS_CONTENT", threshold = threshold },
+		{ category = "HARM_CATEGORY_CIVIC_INTEGRITY", threshold = threshold },
 	}
 end
 
--- request generation of content
+-- request text generation with given prompts
 --
 -- https://ai.google.dev/tutorials/rest_quickstart#text-only_input
-function M.request_content_generation(prompts)
+function M.text(prompts)
 	local apiKey, err = fs.read_api_key()
 	if err ~= nil then
 		return nil, err
@@ -66,7 +68,12 @@ function M.request_content_generation(prompts)
 	local endpoint = "/v1beta/models/" .. config.options.model .. ":generateContent"
 	local params = {
 		-- system instruction
-		systemInstruction = { role = "model", parts = { { text = system_instruction(config.options.model) } } },
+		systemInstruction = {
+			role = "model",
+			parts = {
+				{ text = system_instruction(config.options.model) },
+			},
+		},
 
 		-- contents
 		contents = { { role = "user", parts = {} } },
@@ -85,6 +92,7 @@ function M.request_content_generation(prompts)
 		vim.notify("Generating...", vim.log.levels.INFO)
 	end
 
+	-- send request,
 	local res = curl.post(request_url(endpoint, apiKey), {
 		headers = {
 			["Content-Type"] = contentType,
@@ -93,6 +101,7 @@ function M.request_content_generation(prompts)
 		timeout = config.options.timeout,
 	})
 
+	-- check response,
 	if res.status == 200 and res.exit == 0 then
 		if config.options.verbose then
 			vim.notify("Generated " .. string.len(res.body) .. " bytes.", vim.log.levels.DEBUG)
@@ -108,7 +117,7 @@ function M.request_content_generation(prompts)
 			vim.notify("Generation failed.", vim.log.levels.ERROR)
 		end
 
-		err = "request failed with http status: " .. res.status .. ", curl exit code: " .. res.exit
+		err = string.format("request failed; http %s; curl exit %s;", res.status, res.exit)
 	end
 
 	return res, err
