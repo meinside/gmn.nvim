@@ -1,6 +1,6 @@
 # gmn.nvim
 
-A neovim plugin for generating texts using Google [Gemini APIs](https://ai.google.dev/tutorials/rest_quickstart).
+A Neovim plugin for generating texts using Google [Gemini APIs](https://ai.google.dev/gemini-api/docs/quickstart#rest).
 
 ## Installation
 
@@ -51,10 +51,22 @@ and create a JSON config file at path `configFilepath` with following content:
 Run following command with a prompt:
 
 ```
-:GeminiGenerate your prompt text here
+:GeminiGenerate <<your prompt text here>>
 ```
 
 It will generate a text from your prompt and insert it at the current cursor position.
+
+For generating with a prompt and google web search, use:
+
+```
+:GeminiGenerateWithSearch <<your prompt which needs some searched results from google>>
+```
+
+For generating with contents fetched from URLs in the prompt, use:
+
+```
+:GeminiGenerateWithURLFetch <<your prompt which does something with <https://url1>, <https://url2> ...>>
+```
 
 #### Generate Text With Selected Range As A Prompt
 
@@ -68,6 +80,18 @@ Select a range of text with visual block, and run following command:
 
 then it will generate a text from the selected text as a prompt, and replace the range with the generated one.
 
+For generating with the selected range and google web search, use:
+
+```
+:'<,'>GeminiGenerateWithSearch
+```
+
+For generating with contents fetched from URLs in the selected range, use:
+
+```
+:'<,'>GeminiGenerateWithURLFetch
+```
+
 #### Replace Selected Range With Generated Text
 
 ![gmn-nvim replace-with-prompt](https://github.com/meinside/gmn.nvim/assets/185988/831aa4f2-cfb9-4253-8cf6-e585b7617284)
@@ -78,7 +102,20 @@ Select a range of text with visual block, and run following command with a promp
 :'<,'>GeminiGenerate your prompt text here
 ```
 
-then it will generate a text from both the selected text and prompt, and replace the range with the generated one.
+then it will generate a text from both the selected text and prompt, and replace the selected range with the generated one.
+
+For generating with a prompt, selected range, and google web search, use:
+
+```
+:'<,'>GeminiGenerateWithSearch <<your prompt>>
+```
+
+For generating with a prompt and contents fetched from URLs in the selected range, use:
+
+```
+:'<,'>GeminiGenerateWithURLFetch <<your prompt>>
+```
+
 
 ### Git Commit Message Generation
 

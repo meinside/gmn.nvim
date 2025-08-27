@@ -13,11 +13,11 @@ local config = require("gmn/config")
 
 -- constants
 local contentType = "application/json"
-local baseurl = "https://generativelanguage.googleapis.com"
+local baseUrl = "https://generativelanguage.googleapis.com"
 
 -- generate a request url
 local function request_url(endpoint)
-	return baseurl .. endpoint
+	return baseUrl .. endpoint
 end
 
 local M = {}
@@ -56,11 +56,26 @@ local function safety_settings(threshold)
 	}
 end
 
--- request text generation with given prompts
+-- Requests text generation with given prompts.
+--
+-- @params prompts A list of prompt strings.
+-- @params opts An optional table of options.
+-- @returns A table of response and error message.
+--
+-- opts is a table with the following keys:
+-- - fetch_urls: A boolean indicating whether to fetch contents from URLs or not.
+-- - web_search: A boolean indicating whether to use web search or not.
+-- - thinking: A boolean indicating whether to use reasoning or not.
 --
 -- https://ai.google.dev/gemini-api/docs/quickstart?lang=rest#make-first-request
-function M.text(prompts)
-	local apiKey, err = fs.read_api_key()
+function M.text(prompts, opts)
+	opts = opts or {}
+
+	if config.options.verbose then
+		vim.notify("Generating with opts: " .. vim.inspect(opts), vim.log.levels.DEBUG)
+	end
+
+	local api_key, err = fs.read_api_key()
 	if err ~= nil then
 		return nil, err
 	end
@@ -86,6 +101,35 @@ function M.text(prompts)
 		params.contents[1].parts[i] = { text = prompts[i] }
 	end
 
+	-- tools
+	local tools = {}
+	-- https://ai.google.dev/gemini-api/docs/url-context#rest
+	local fetch_urls = opts.fetch_urls or false
+	if fetch_urls then
+		table.insert(tools, { url_context = vim.empty_dict() })
+	end
+	-- https://ai.google.dev/gemini-api/docs/google-search#rest
+	local web_search = opts.web_search or false
+	if web_search then
+		table.insert(tools, { google_search = vim.empty_dict() })
+	end
+	if #tools > 0 then
+		params.tools = tools
+	end
+
+	-- generation config
+	local generation_config = {}
+	-- https://ai.google.dev/gemini-api/docs/thinking#rest_1
+	local thinking = opts.thinking or false
+	if thinking then
+		generation_config.thinkingConfig = {
+			thinkingBudget = -1, -- dynamic thinking
+		}
+	end
+	if next(generation_config) ~= nil then
+		params.generationConfig = generation_config
+	end
+
 	if config.options.verbose then
 		vim.notify("Sending request to: " .. endpoint, vim.log.levels.DEBUG)
 	else
@@ -96,7 +140,7 @@ function M.text(prompts)
 	local res = curl.post(request_url(endpoint), {
 		headers = {
 			["Content-Type"] = contentType,
-			["x-goog-api-key"] = apiKey,
+			["x-goog-api-key"] = api_key,
 		},
 		raw_body = vim.json.encode(params),
 		timeout = config.options.timeout,
