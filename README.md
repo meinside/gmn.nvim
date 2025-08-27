@@ -9,20 +9,21 @@ A neovim plugin for generating texts using Google [Gemini APIs](https://ai.googl
 ```lua
 
   {
-    'meinside/gmn.nvim', config = function()
-      require'gmn'.setup {
+    "meinside/gmn.nvim",
+    config = function()
+      require("gmn").setup({
         -- (default values)
-        configFilepath = '~/.config/gmn.nvim/config.json',
+        configFilepath = "~/.config/gmn.nvim/config.json",
         timeout = 30 * 1000,
-        model = 'gemini-2.0-flash',
-        safetyThreshold = 'BLOCK_ONLY_HIGH',
+        model = "gemini-2.5-flash",
+        safetyThreshold = "BLOCK_ONLY_HIGH",
         stripOutermostCodeblock = function()
-          return vim.bo.filetype ~= 'markdown'
+          return vim.bo.filetype ~= "markdown"
         end,
         verbose = false,
-      }
+      })
     end,
-    dependencies = { { 'nvim-lua/plenary.nvim' } },
+    dependencies = { { "nvim-lua/plenary.nvim" } },
   },
 
 ```
