@@ -1,6 +1,6 @@
 -- lua/gmn.lua
 --
--- last update: 2025.05.29.
+-- last update: 2025.08.27.
 
 -- plugin modules
 local config = require("gmn/config")
@@ -13,10 +13,17 @@ function M.setup(opts)
 	config.override(opts)
 end
 
--- generate and return text with given prompts
-function M.generate_text(prompts)
+-- Generates and returns text with given prompts.
+--
+-- opts is a table with the following keys:
+-- - fetch_urls: A boolean indicating whether to fetch contents from URLs or not.
+-- - web_search: A boolean indicating whether to use web search or not.
+-- - thinking: A boolean indicating whether to use reasoning or not.
+function M.generate_text(prompts, opts)
+	opts = opts or {}
+
 	local parts = {}
-	local res, err = generation.text(prompts)
+	local res, err = generation.text(prompts, opts)
 
 	if err == nil then
 		-- take the first candidate,
