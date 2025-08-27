@@ -2,7 +2,7 @@
 --
 -- Generation module
 --
--- last update: 2025.05.29.
+-- last update: 2025.08.27.
 
 -- external dependencies
 local curl = require("plenary/curl")
@@ -16,8 +16,8 @@ local contentType = "application/json"
 local baseurl = "https://generativelanguage.googleapis.com"
 
 -- generate a request url
-local function request_url(endpoint, apiKey)
-	return baseurl .. endpoint .. "?key=" .. apiKey
+local function request_url(endpoint)
+	return baseurl .. endpoint
 end
 
 local M = {}
@@ -45,20 +45,20 @@ end
 
 -- generate safety settings with given threshold
 --
--- https://ai.google.dev/docs/safety_setting_gemini
+-- https://ai.google.dev/gemini-api/docs/safety-settings
 local function safety_settings(threshold)
 	return {
 		{ category = "HARM_CATEGORY_HARASSMENT", threshold = threshold },
 		{ category = "HARM_CATEGORY_HATE_SPEECH", threshold = threshold },
 		{ category = "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold = threshold },
 		{ category = "HARM_CATEGORY_DANGEROUS_CONTENT", threshold = threshold },
-		{ category = "HARM_CATEGORY_CIVIC_INTEGRITY", threshold = threshold },
+		--{ category = "HARM_CATEGORY_CIVIC_INTEGRITY", threshold = threshold }, -- FIXME: http 500 errors occur with this
 	}
 end
 
 -- request text generation with given prompts
 --
--- https://ai.google.dev/tutorials/rest_quickstart#text-only_input
+-- https://ai.google.dev/gemini-api/docs/quickstart?lang=rest#make-first-request
 function M.text(prompts)
 	local apiKey, err = fs.read_api_key()
 	if err ~= nil then
@@ -93,9 +93,10 @@ function M.text(prompts)
 	end
 
 	-- send request,
-	local res = curl.post(request_url(endpoint, apiKey), {
+	local res = curl.post(request_url(endpoint), {
 		headers = {
 			["Content-Type"] = contentType,
+			["x-goog-api-key"] = apiKey,
 		},
 		raw_body = vim.json.encode(params),
 		timeout = config.options.timeout,
