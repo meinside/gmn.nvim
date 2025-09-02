@@ -2,24 +2,20 @@
 --
 -- File module
 --
--- last update: 2025.03.04.
+-- last update: 2025.09.02.
 
 -- external dependencies
 local path = require("plenary/path")
 
--- plugin modules
-local config = require("gmn/config")
-
 local M = {}
 
--- read and return the `api_key` value
-function M.read_api_key()
+-- read and return the `api_key` value from the config file at `filepath`.
+function M.read_api_key_file(filepath)
 	local api_key = nil
 	local err = nil
 
-	local filepath = config.options.configFilepath
+	-- read from file,
 	local f = io.open(path:new(filepath):expand(), "r")
-
 	if f ~= nil then
 		local str = f:read("*a")
 		io.close(f)

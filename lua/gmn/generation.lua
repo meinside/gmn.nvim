@@ -2,7 +2,7 @@
 --
 -- Generation module
 --
--- last update: 2025.08.27.
+-- last update: 2025.09.02.
 
 -- external dependencies
 local curl = require("plenary/curl")
@@ -75,9 +75,13 @@ function M.text(prompts, opts)
 		vim.notify("Generating with opts: " .. vim.inspect(opts), vim.log.levels.DEBUG)
 	end
 
-	local api_key, err = fs.read_api_key()
+	-- read `api_key`
+	local api_key, err = config.read_api_key_env() -- from env variables
 	if err ~= nil then
-		return nil, err
+		api_key, err = fs.read_api_key_file(config.options.configFilepath) -- or from config file
+		if err ~= nil then
+			return nil, err
+		end
 	end
 
 	local endpoint = "/v1beta/models/" .. config.options.model .. ":generateContent"
