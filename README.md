@@ -30,9 +30,26 @@ A Neovim plugin for generating texts using Google [Gemini APIs](https://ai.googl
 
 ## Configuration
 
-Get your Google AI API key from [here](https://makersuite.google.com/app/apikey)
+Get your Google AI API key from [here](https://makersuite.google.com/app/apikey), then
 
-and create a JSON config file at path `configFilepath` with following content:
+### Environment Variable
+
+Use an environment variable named `GEMINI_API_KEY` like:
+
+```bash
+# export your environment variable,
+$ export GEMINI_API_KEY="AI0123456789-abcdefg-XYZW"
+
+# create an .env file with your environment variable,
+$ echo "GEMINI_API_KEY=AI0123456789-abcdefg-XYZW" > .env
+
+# or, run nvim with your environment variable,
+$ GEMINI_API_KEY="AI0123456789-abcdefg-XYZW" nvim
+```
+
+### Config File
+
+Or, create a JSON config file at path `configFilepath` with the following content:
 
 ```json
 {
