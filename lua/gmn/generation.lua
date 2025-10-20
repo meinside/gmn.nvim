@@ -2,7 +2,7 @@
 --
 -- Generation module
 --
--- last update: 2025.09.02.
+-- last update: 2025.10.20.
 
 -- external dependencies
 local curl = require("plenary/curl")
@@ -39,7 +39,7 @@ Respond to user messages according to the following principles:
 - Be as comprehensive and informative as possible.
 ]====],
 		model,
-		os.date("%Y-%m-%d %H:%M:%S", os.time())
+		os.date("%Y-%m-%d %H:%M:%S %Z", os.time())
 	)
 end
 
