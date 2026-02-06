@@ -7,7 +7,7 @@ A Neovim plugin for generating texts using Google [Gemini APIs](https://ai.googl
 ### lazy.nvim
 
 ```lua
-
+  -- default: ./lua/gmn/config.lua
   {
     "meinside/gmn.nvim",
     config = function()

@@ -2,7 +2,7 @@
 --
 -- Generation module
 --
--- last update: 2025.10.20.
+-- last update: 2026.02.06.
 
 -- external dependencies
 local curl = require("plenary/curl")
@@ -59,8 +59,8 @@ end
 -- Requests text generation with given prompts.
 --
 -- @params prompts A list of prompt strings.
+-- @params callback A callback function that receives the response and error message.
 -- @params opts An optional table of options.
--- @returns A table of response and error message.
 --
 -- opts is a table with the following keys:
 -- - fetch_urls: A boolean indicating whether to fetch contents from URLs or not.
@@ -68,7 +68,7 @@ end
 -- - thinking: A boolean indicating whether to use reasoning or not.
 --
 -- https://ai.google.dev/gemini-api/docs/quickstart?lang=rest#make-first-request
-function M.text(prompts, opts)
+function M.text(prompts, callback, opts)
 	opts = opts or {}
 
 	if config.options.verbose then
@@ -80,7 +80,10 @@ function M.text(prompts, opts)
 	if err ~= nil then
 		api_key, err = fs.read_api_key_file(config.options.configFilepath) -- or from config file
 		if err ~= nil then
-			return nil, err
+			if callback then
+				callback(nil, err)
+			end
+			return
 		end
 	end
 
@@ -141,35 +144,39 @@ function M.text(prompts, opts)
 	end
 
 	-- send request,
-	local res = curl.post(request_url(endpoint), {
+	curl.post(request_url(endpoint), {
 		headers = {
 			["Content-Type"] = contentType,
 			["x-goog-api-key"] = api_key,
 		},
 		raw_body = vim.json.encode(params),
 		timeout = config.options.timeout,
+		callback = vim.schedule_wrap(function(res)
+			local err = nil
+			-- check response,
+			if res.status == 200 and res.exit == 0 then
+				if config.options.verbose then
+					vim.notify("Generated " .. string.len(res.body) .. " bytes.", vim.log.levels.DEBUG)
+				else
+					vim.notify("Generation finished.", vim.log.levels.INFO)
+				end
+
+				res = vim.json.decode(res.body)
+			else
+				if config.options.verbose then
+					vim.notify(vim.inspect(res), vim.log.levels.DEBUG)
+				else
+					vim.notify("Generation failed.", vim.log.levels.ERROR)
+				end
+
+				err = string.format("request failed; http %s; curl exit %s;", res.status, res.exit)
+			end
+
+			if callback then
+				callback(res, err)
+			end
+		end),
 	})
-
-	-- check response,
-	if res.status == 200 and res.exit == 0 then
-		if config.options.verbose then
-			vim.notify("Generated " .. string.len(res.body) .. " bytes.", vim.log.levels.DEBUG)
-		else
-			vim.notify("Generation finished.", vim.log.levels.INFO)
-		end
-
-		res = vim.json.decode(res.body)
-	else
-		if config.options.verbose then
-			vim.notify(vim.inspect(res), vim.log.levels.DEBUG)
-		else
-			vim.notify("Generation failed.", vim.log.levels.ERROR)
-		end
-
-		err = string.format("request failed; http %s; curl exit %s;", res.status, res.exit)
-	end
-
-	return res, err
 end
 
 return M

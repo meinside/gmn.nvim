@@ -2,7 +2,7 @@
 --
 -- Gemini plugin for neovim
 --
--- last update: 2025.08.27.
+-- last update: 2026.02.06.
 
 local cmdGenerateText = "GeminiGenerate"
 local cmdGenerateTextWithSearch = "GeminiGenerateWithSearch"
@@ -37,23 +37,24 @@ local function generate(cmd_opts, gen_opts)
 			debug(string.format("using command parameter as a prompt: %s", cmd_opts.fargs[1]))
 
 			-- do the generation
-			local parts, err = gmn.generate_text({ cmd_opts.fargs[1] }, gen_opts)
-			if err ~= nil then
-				error(string.format("Error: %s", err))
-			else
-				-- strip outermost codeblock
-				if config.options.stripOutermostCodeblock() then
-					for i, _ in ipairs(parts) do
-						parts[i] = util.strip_outermost_codeblock(parts[i])
+			gmn.generate_text({ cmd_opts.fargs[1] }, function(parts, err)
+				if err ~= nil then
+					error(string.format("Error: %s", err))
+				else
+					-- strip outermost codeblock
+					if config.options.stripOutermostCodeblock() then
+						for i, _ in ipairs(parts) do
+							parts[i] = util.strip_outermost_codeblock(parts[i])
+						end
 					end
+
+					-- split lines
+					local lines = util.split_lines(parts)
+
+					-- and insert the generated content
+					ui.insert_text_at_current_cursor(lines)
 				end
-
-				-- split lines
-				local lines = util.split_lines(parts)
-
-				-- and insert the generated content
-				ui.insert_text_at_current_cursor(lines)
-			end
+			end, gen_opts)
 		else
 			warn("No prompt was given.")
 		end
@@ -74,23 +75,24 @@ local function generate(cmd_opts, gen_opts)
 		end
 
 		-- do the generation
-		local parts, err = gmn.generate_text(prompts, gen_opts)
-		if err ~= nil then
-			error(err)
-		else
-			-- strip outermost codeblock
-			if config.options.stripOutermostCodeblock() then
-				for i, _ in ipairs(parts) do
-					parts[i] = util.strip_outermost_codeblock(parts[i])
+		gmn.generate_text(prompts, function(parts, err)
+			if err ~= nil then
+				error(err)
+			else
+				-- strip outermost codeblock
+				if config.options.stripOutermostCodeblock() then
+					for i, _ in ipairs(parts) do
+						parts[i] = util.strip_outermost_codeblock(parts[i])
+					end
 				end
+
+				-- split lines
+				local lines = util.split_lines(parts)
+
+				-- and replace the selected range with generated content
+				ui.replace_text(start_row, start_col, end_row, end_col, lines)
 			end
-
-			-- split lines
-			local lines = util.split_lines(parts)
-
-			-- and replace the selected range with generated content
-			ui.replace_text(start_row, start_col, end_row, end_col, lines)
-		end
+		end, gen_opts)
 	end
 end
 
@@ -241,19 +243,20 @@ Here is the git diff result:
 		debug(string.format("using prompt: %s", prompts[1]))
 
 		-- do the generation
-		local parts, err = gmn.generate_text(prompts, { thinking = true })
-		if err ~= nil then
-			error(err)
-		else
-			-- split lines
-			local lines = util.split_lines(parts)
+		gmn.generate_text(prompts, function(parts, err)
+			if err ~= nil then
+				error(err)
+			else
+				-- split lines
+				local lines = util.split_lines(parts)
 
-			-- FIXME: it is hard to insert an empty line between the title and the body, only with the prompt
-			lines = util.insert_empty_line_after_first(lines)
+				-- FIXME: it is hard to insert an empty line between the title and the body, only with the prompt
+				lines = util.insert_empty_line_after_first(lines)
 
-			-- and replace whole file with the generated content
-			ui.replace_whole_text(lines)
-		end
+				-- and replace whole file with the generated content
+				ui.replace_whole_text(lines)
+			end
+		end, { thinking = true })
 	else -- if there was some selected range,
 		local start_row, start_col, end_row, end_col = ui.get_selection()
 		local selected = ui.get_text(start_row, start_col, end_row, end_col)
@@ -271,18 +274,19 @@ Here is the git diff result:
 		end
 
 		-- do the generation
-		local parts, err = gmn.generate_text(prompts, { thinking = true })
-		if err ~= nil then
-			error(string.format("Error: %s", err))
-		else
-			-- split lines
-			local lines = util.split_lines(parts)
+		gmn.generate_text(prompts, function(parts, err)
+			if err ~= nil then
+				error(string.format("Error: %s", err))
+			else
+				-- split lines
+				local lines = util.split_lines(parts)
 
-			-- FIXME: it is hard to insert an empty line between the title and the body, only with the prompt
-			lines = util.insert_empty_line_after_first(lines)
+				-- FIXME: it is hard to insert an empty line between the title and the body, only with the prompt
+				lines = util.insert_empty_line_after_first(lines)
 
-			-- merge generated contents and replace the selected range with it
-			ui.replace_text(start_row, start_col, end_row, end_col, lines)
-		end
+				-- merge generated contents and replace the selected range with it
+				ui.replace_text(start_row, start_col, end_row, end_col, lines)
+			end
+		end, { thinking = true })
 	end
 end, { range = true })
