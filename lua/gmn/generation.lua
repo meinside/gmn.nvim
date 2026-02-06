@@ -10,6 +10,7 @@ local curl = require("plenary/curl")
 -- plugin modules
 local fs = require("gmn/fs")
 local config = require("gmn/config")
+local progress = require("gmn/progress")
 
 -- constants
 local contentType = "application/json"
@@ -137,10 +138,11 @@ function M.text(prompts, callback, opts)
 		params.generationConfig = generation_config
 	end
 
+	local progress_job = nil
 	if config.options.verbose then
-		vim.notify("Sending request to: " .. endpoint, vim.log.levels.DEBUG)
+		progress_job = progress.start("Sending request to: " .. endpoint, vim.log.levels.DEBUG)
 	else
-		vim.notify("Generating...", vim.log.levels.INFO)
+		progress_job = progress.start("Generating...", vim.log.levels.INFO)
 	end
 
 	-- send request,
@@ -152,24 +154,36 @@ function M.text(prompts, callback, opts)
 		raw_body = vim.json.encode(params),
 		timeout = config.options.timeout,
 		callback = vim.schedule_wrap(function(res)
+			local msg, level
 			local err = nil
+
 			-- check response,
 			if res.status == 200 and res.exit == 0 then
 				if config.options.verbose then
-					vim.notify("Generated " .. string.len(res.body) .. " bytes.", vim.log.levels.DEBUG)
+					msg = "Generated " .. string.len(res.body) .. " bytes."
+					level = vim.log.levels.DEBUG
 				else
-					vim.notify("Generation finished.", vim.log.levels.INFO)
+					msg = "Generation finished."
+					level = vim.log.levels.INFO
 				end
 
 				res = vim.json.decode(res.body)
 			else
 				if config.options.verbose then
-					vim.notify(vim.inspect(res), vim.log.levels.DEBUG)
+					msg = vim.inspect(res)
+					level = vim.log.levels.DEBUG
 				else
-					vim.notify("Generation failed.", vim.log.levels.ERROR)
+					msg = "Generation failed."
+					level = vim.log.levels.ERROR
 				end
 
 				err = string.format("request failed; http %s; curl exit %s;", res.status, res.exit)
+			end
+
+			if progress_job then
+				progress_job.stop(msg, level)
+			else
+				vim.notify(msg, level)
 			end
 
 			if callback then
