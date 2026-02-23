@@ -144,7 +144,7 @@ Run following command:
 :GeminiGenerateGitCommitLog
 ```
 
-then it will generate a commit message from the result of `git diff HEAD`,
+then it will generate a commit message from the result of `git diff --staged`,
 
 clear the current buffer, and insert the generated message.
 

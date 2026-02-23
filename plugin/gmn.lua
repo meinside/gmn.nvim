@@ -2,7 +2,7 @@
 --
 -- Gemini plugin for neovim
 --
--- last update: 2026.02.06.
+-- last update: 2026.02.23.
 
 local cmdGenerateText = "GeminiGenerate"
 local cmdGenerateTextWithSearch = "GeminiGenerateWithSearch"
@@ -150,7 +150,7 @@ vim.api.nvim_create_user_command(cmdGenerateTextWithURLFetch, function(opts)
 end, { range = true, nargs = "?" })
 
 -- :GeminiGenerateGitCommitLog
---   generate a git commit log from the result of command: `git diff HEAD`
+--   generate a git commit log from the result of command: `git diff --staged`
 --
 -- :'<,'>GeminiGenerateGitCommitLog
 --   replace selected range with the generated git commit log (generated from the selected range as a prompt)
@@ -230,14 +230,14 @@ Avoid:
 | perf     | Performance improvements              |
 
 ---
-Here is the git diff result:
+Here is the result of `git diff --staged`:
 
 
 ]====]
 
 	-- generate texts with given prompt,
 	if opts.range == 0 then -- if there was no selected range,
-		local text = util.execute_command("git diff HEAD")
+		local text = util.execute_command("git diff --staged")
 		local prompts = { promptPrefix .. text }
 
 		debug(string.format("using prompt: %s", prompts[1]))
