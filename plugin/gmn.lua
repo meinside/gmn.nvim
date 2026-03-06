@@ -2,7 +2,7 @@
 --
 -- Gemini plugin for neovim
 --
--- last update: 2026.02.23.
+-- last update: 2026.03.06.
 
 local cmdGenerateText = "GeminiGenerate"
 local cmdGenerateTextWithSearch = "GeminiGenerateWithSearch"
@@ -14,7 +14,7 @@ local config = require("gmn/config")
 local ui = require("gmn/ui")
 local util = require("gmn/util")
 
-local function error(msg)
+local function notify_error(msg)
 	vim.notify(msg, vim.log.levels.ERROR)
 end
 
@@ -28,6 +28,30 @@ local function debug(msg)
 	end
 end
 
+-- create a generation callback that processes parts and applies the result
+local function make_callback(action, opts)
+	opts = opts or {}
+	return function(parts, err)
+		if err ~= nil then
+			notify_error(string.format("Error: %s", err))
+		else
+			if opts.strip_codeblock and config.options.stripOutermostCodeblock() then
+				for i, _ in ipairs(parts) do
+					parts[i] = util.strip_outermost_codeblock(parts[i])
+				end
+			end
+
+			local lines = util.split_lines(parts)
+
+			if opts.ensure_empty_line then
+				lines = util.insert_empty_line_after_first(lines)
+			end
+
+			action(lines)
+		end
+	end
+end
+
 -- generate texts with given parameters
 local function generate(cmd_opts, gen_opts)
 	gen_opts = gen_opts or {}
@@ -36,25 +60,13 @@ local function generate(cmd_opts, gen_opts)
 		if #cmd_opts.fargs > 0 then
 			debug(string.format("using command parameter as a prompt: %s", cmd_opts.fargs[1]))
 
-			-- do the generation
-			gmn.generate_text({ cmd_opts.fargs[1] }, function(parts, err)
-				if err ~= nil then
-					error(string.format("Error: %s", err))
-				else
-					-- strip outermost codeblock
-					if config.options.stripOutermostCodeblock() then
-						for i, _ in ipairs(parts) do
-							parts[i] = util.strip_outermost_codeblock(parts[i])
-						end
-					end
-
-					-- split lines
-					local lines = util.split_lines(parts)
-
-					-- and insert the generated content
+			gmn.generate_text(
+				{ cmd_opts.fargs[1] },
+				make_callback(function(lines)
 					ui.insert_text_at_current_cursor(lines)
-				end
-			end, gen_opts)
+				end, { strip_codeblock = true }),
+				gen_opts
+			)
 		else
 			warn("No prompt was given.")
 		end
@@ -74,25 +86,13 @@ local function generate(cmd_opts, gen_opts)
 			table.insert(prompts, cmd_opts.fargs[1])
 		end
 
-		-- do the generation
-		gmn.generate_text(prompts, function(parts, err)
-			if err ~= nil then
-				error(err)
-			else
-				-- strip outermost codeblock
-				if config.options.stripOutermostCodeblock() then
-					for i, _ in ipairs(parts) do
-						parts[i] = util.strip_outermost_codeblock(parts[i])
-					end
-				end
-
-				-- split lines
-				local lines = util.split_lines(parts)
-
-				-- and replace the selected range with generated content
+		gmn.generate_text(
+			prompts,
+			make_callback(function(lines)
 				ui.replace_text(start_row, start_col, end_row, end_col, lines)
-			end
-		end, gen_opts)
+			end, { strip_codeblock = true }),
+			gen_opts
+		)
 	end
 end
 
@@ -238,25 +238,23 @@ Here is the result of `git diff --staged`:
 	-- generate texts with given prompt,
 	if opts.range == 0 then -- if there was no selected range,
 		local text = util.execute_command("git diff --staged")
+
+		if vim.trim(text) == "" then
+			warn("No staged changes found. Use `git add` to stage changes first.")
+			return
+		end
+
 		local prompts = { promptPrefix .. text }
 
 		debug(string.format("using prompt: %s", prompts[1]))
 
-		-- do the generation
-		gmn.generate_text(prompts, function(parts, err)
-			if err ~= nil then
-				error(err)
-			else
-				-- split lines
-				local lines = util.split_lines(parts)
-
-				-- FIXME: it is hard to insert an empty line between the title and the body, only with the prompt
-				lines = util.insert_empty_line_after_first(lines)
-
-				-- and replace whole file with the generated content
+		gmn.generate_text(
+			prompts,
+			make_callback(function(lines)
 				ui.replace_whole_text(lines)
-			end
-		end, { thinking = true })
+			end, { ensure_empty_line = true }),
+			{ thinking = true }
+		)
 	else -- if there was some selected range,
 		local start_row, start_col, end_row, end_col = ui.get_selection()
 		local selected = ui.get_text(start_row, start_col, end_row, end_col)
@@ -273,20 +271,12 @@ Here is the result of `git diff --staged`:
 			table.insert(prompts, promptPrefix .. opts.fargs[1])
 		end
 
-		-- do the generation
-		gmn.generate_text(prompts, function(parts, err)
-			if err ~= nil then
-				error(string.format("Error: %s", err))
-			else
-				-- split lines
-				local lines = util.split_lines(parts)
-
-				-- FIXME: it is hard to insert an empty line between the title and the body, only with the prompt
-				lines = util.insert_empty_line_after_first(lines)
-
-				-- merge generated contents and replace the selected range with it
+		gmn.generate_text(
+			prompts,
+			make_callback(function(lines)
 				ui.replace_text(start_row, start_col, end_row, end_col, lines)
-			end
-		end, { thinking = true })
+			end, { ensure_empty_line = true }),
+			{ thinking = true }
+		)
 	end
 end, { range = true })

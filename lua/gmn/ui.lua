@@ -2,7 +2,7 @@
 --
 -- UI module
 --
--- last update: 2025.03.04.
+-- last update: 2026.03.06.
 
 local M = {}
 
@@ -46,12 +46,6 @@ end
 function M.insert_text_at_current_cursor(lines)
 	local row, col = unpack(vim.api.nvim_win_get_cursor(0))
 	vim.api.nvim_buf_set_text(0, row - 1, col, row - 1, col, lines)
-end
-
--- retrieve whole lines from the buffer
-function M.whole_buffer_lines()
-	local content = vim.api.nvim_buf_get_lines(0, 0, vim.api.nvim_buf_line_count(0), false)
-	return table.concat(content, "\n")
 end
 
 return M
