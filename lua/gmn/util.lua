@@ -2,7 +2,7 @@
 --
 -- Utility functions module
 --
--- last update: 2025.03.04.
+-- last update: 2026.03.06.
 
 local M = {}
 
@@ -28,16 +28,6 @@ function M.has_prefix(str, prefix)
 	return str:sub(1, #prefix) == prefix
 end
 
--- checks if str has given suffix
-function M.has_suffix(str, suffix)
-	return str:sub(-#suffix) == suffix
-end
-
--- checks if str contains given substr
-function M.contains(str, substr)
-	return str:find(substr) ~= nil
-end
-
 -- sub-slices given array
 function M.subslice(array, start_index, end_index)
 	local sub_array = {}
@@ -50,18 +40,12 @@ end
 -- split each line with '\n'
 function M.split_lines(original)
 	local lines = {}
-	for i, _ in ipairs(original) do
-		local splitted = M.split(original[i], "\n")
-		for j, _ in ipairs(splitted) do
-			table.insert(lines, splitted[j])
+	for _, text in ipairs(original) do
+		for _, line in ipairs(vim.split(text, "\n", { plain = true })) do
+			table.insert(lines, line)
 		end
 	end
 	return lines
-end
-
--- remove comments (#) from given text
-function M.remove_comments(text)
-	return text:gsub("#[^\n]*\n", "\n"):gsub("#[^\n]*$", "")
 end
 
 -- if the second line is not empty, insert one

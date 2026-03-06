@@ -23,7 +23,6 @@ A Neovim plugin for generating texts using Google [Gemini APIs](https://ai.googl
         verbose = false,
       })
     end,
-    dependencies = { { "nvim-lua/plenary.nvim" } },
   },
 
 ```

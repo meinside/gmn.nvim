@@ -2,10 +2,7 @@
 --
 -- Generation module
 --
--- last update: 2026.02.06.
-
--- external dependencies
-local curl = require("plenary/curl")
+-- last update: 2026.03.06.
 
 -- plugin modules
 local fs = require("gmn/fs")
@@ -146,38 +143,58 @@ function M.text(prompts, callback, opts)
 	end
 
 	-- send request,
-	curl.post(request_url(endpoint), {
-		headers = {
-			["Content-Type"] = contentType,
-			["x-goog-api-key"] = api_key,
+	local timeout_secs = tostring(math.ceil(config.options.timeout / 1000))
+	vim.system(
+		{
+			"curl",
+			"-s",
+			"-X",
+			"POST",
+			"-H",
+			"Content-Type: " .. contentType,
+			"-H",
+			"x-goog-api-key: " .. api_key,
+			"--max-time",
+			timeout_secs,
+			"--data-raw",
+			vim.json.encode(params),
+			request_url(endpoint),
 		},
-		raw_body = vim.json.encode(params),
-		timeout = config.options.timeout,
-		callback = vim.schedule_wrap(function(res)
+		{ text = true },
+		vim.schedule_wrap(function(result)
 			local msg, level
 			local err = nil
+			local res = nil
 
-			-- check response,
-			if res.status == 200 and res.exit == 0 then
-				if config.options.verbose then
-					msg = "Generated " .. string.len(res.body) .. " bytes."
-					level = vim.log.levels.DEBUG
-				else
-					msg = "Generation finished."
-					level = vim.log.levels.INFO
-				end
-
-				res = vim.json.decode(res.body)
+			if result.code ~= 0 then
+				msg = config.options.verbose and string.format("curl exit %s: %s", result.code, result.stderr)
+					or "Generation failed."
+				level = vim.log.levels.ERROR
+				err = string.format("request failed; curl exit %s;", result.code)
 			else
-				if config.options.verbose then
-					msg = vim.inspect(res)
-					level = vim.log.levels.DEBUG
-				else
+				local ok, decoded = pcall(vim.json.decode, result.stdout)
+				if not ok then
 					msg = "Generation failed."
 					level = vim.log.levels.ERROR
+					err = string.format("failed to decode response JSON: %s", decoded)
+				elseif decoded.error then
+					level = vim.log.levels.ERROR
+					err = string.format(
+						"API error %s: %s",
+						decoded.error.code or "unknown",
+						decoded.error.message or "unknown"
+					)
+					msg = config.options.verbose and err or "Generation failed."
+				else
+					res = decoded
+					if config.options.verbose then
+						msg = "Generated " .. string.len(result.stdout) .. " bytes."
+						level = vim.log.levels.DEBUG
+					else
+						msg = "Generation finished."
+						level = vim.log.levels.INFO
+					end
 				end
-
-				err = string.format("request failed; http %s; curl exit %s;", res.status, res.exit)
 			end
 
 			if progress_job then
@@ -189,8 +206,8 @@ function M.text(prompts, callback, opts)
 			if callback then
 				callback(res, err)
 			end
-		end),
-	})
+		end)
+	)
 end
 
 return M
