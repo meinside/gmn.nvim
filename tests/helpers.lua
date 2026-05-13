@@ -13,14 +13,7 @@ end
 -- assert deep equality; raises with a readable diff on failure.
 function M.eq(actual, expected, msg)
 	if not vim.deep_equal(actual, expected) then
-		error(
-			(msg and (msg .. "\n") or "")
-				.. "  expected: "
-				.. fmt(expected)
-				.. "\n  actual:   "
-				.. fmt(actual),
-			2
-		)
+		error((msg and (msg .. "\n") or "") .. "  expected: " .. fmt(expected) .. "\n  actual:   " .. fmt(actual), 2)
 	end
 end
 

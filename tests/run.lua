@@ -85,7 +85,9 @@ print(string.format("%d passed, %d failed (of %d)\n", passed, failed, total))
 
 if failed > 0 then
 	-- non-zero exit code so CI fails
-	vim.cmd("cq")
+	vim.cmd("cq!")
 else
-	vim.cmd("qa")
+	-- force-quit: specs may leave modified scratch buffers behind, which
+	-- would otherwise make plain `qa` fail with E37.
+	vim.cmd("qa!")
 end

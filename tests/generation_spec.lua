@@ -17,13 +17,15 @@ local function reset_modules()
 end
 
 local function install_vim_system_stub()
-	local jobs = {} -- list of { on_exit, killed, kill_signal }
+	local jobs = {} -- list of { on_exit, killed, kill_signal, cmd, opts }
 	local original = vim.system
-	vim.system = function(_cmd, _opts, on_exit)
+	vim.system = function(cmd, opts, on_exit)
 		local job = {
 			killed = false,
 			kill_signal = nil,
 			on_exit = on_exit,
+			cmd = cmd,
+			opts = opts,
 		}
 		function job:kill(signal)
 			self.killed = true
@@ -113,6 +115,41 @@ function M.starting_new_request_cancels_previous_and_keeps_new_handle_cancellabl
 	jobs[2].on_exit({ code = 143, stdout = "", stderr = "" })
 	flush()
 	h.eq(cb2_err, "cancelled")
+
+	restore()
+end
+
+-- regression: large prompts (e.g. big `git diff --staged`) used to be passed
+-- via `--data-raw` and hit ARG_MAX (E2BIG) on macOS. We now stream the body
+-- through stdin via `--data-binary @-`.
+function M.payload_is_sent_through_stdin_not_argv()
+	reset_modules()
+	local generation = require("gmn/generation")
+	local jobs, restore = install_vim_system_stub()
+
+	generation.text({ "hi" }, function() end, {})
+
+	local cmd = jobs[1].cmd
+	local opts = jobs[1].opts
+	local joined = table.concat(cmd, " ")
+
+	-- the body must NOT appear on the command line
+	h.falsy(joined:find("--data-raw", 1, true), "--data-raw should not be used; got: " .. joined)
+	-- and curl must be told to read the body from stdin
+	h.truthy(joined:find("--data-binary", 1, true), "expected --data-binary in argv")
+	-- argv contains "@-" right after --data-binary
+	local idx
+	for i, a in ipairs(cmd) do
+		if a == "--data-binary" then
+			idx = i
+			break
+		end
+	end
+	h.eq(cmd[idx + 1], "@-")
+
+	-- and the stdin option carries the JSON body
+	h.truthy(opts.stdin, "expected vim.system opts.stdin to be set")
+	h.truthy(opts.stdin:find("contents", 1, true), "stdin should contain the request body")
 
 	restore()
 end

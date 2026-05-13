@@ -169,7 +169,11 @@ function M.text(prompts, callback, opts)
 	local req = { job = nil, cancelled = false }
 
 	-- send request,
+	-- NOTE: pass the JSON body via stdin (curl's `--data-binary @-`) instead of
+	-- as an argument. Large payloads (e.g. big `git diff --staged` results)
+	-- otherwise hit the OS ARG_MAX limit and fail with E2BIG.
 	local timeout_secs = tostring(math.ceil(config.options.timeout / 1000))
+	local body = vim.json.encode(params)
 	req.job = vim.system(
 		{
 			"curl",
@@ -182,11 +186,11 @@ function M.text(prompts, callback, opts)
 			"x-goog-api-key: " .. api_key,
 			"--max-time",
 			timeout_secs,
-			"--data-raw",
-			vim.json.encode(params),
+			"--data-binary",
+			"@-",
 			request_url(endpoint),
 		},
-		{ text = true },
+		{ text = true, stdin = body },
 		vim.schedule_wrap(function(result)
 			local msg, level
 			local err = nil
