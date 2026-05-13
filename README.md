@@ -1,6 +1,13 @@
 # gmn.nvim
 
+[![ci](https://github.com/meinside/gmn.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/meinside/gmn.nvim/actions/workflows/ci.yml)
+
 A Neovim plugin for generating texts using Google [Gemini APIs](https://ai.google.dev/gemini-api/docs/quickstart#rest).
+
+## Requirements
+
+- Neovim **0.10.0** or later (uses `vim.system`)
+- `curl` available on `$PATH`
 
 ## Installation
 
@@ -189,15 +196,31 @@ require("gmn").generate_text(
 )
 ```
 
+## Tests
+
+The test suite has no external dependencies; run it with neovim:
+
+```bash
+# all tests
+nvim --headless --clean -u NONE -l tests/run.lua
+
+# filter by substring (e.g. only util specs)
+nvim --headless --clean -u NONE -l tests/run.lua util
+```
+
+Each `tests/*_spec.lua` returns a table mapping test name to function.
+The runner exits non-zero on failure, so it works as-is in CI.
+
 ## Todos / Improvements
 
 - [X] Add screen recordings for text generation.
 - [ ] Add screen recordings for git commit log generation.
 - [X] Strip unwanted markdown codeblock around the generated texts.
-- [ ] Add nice UIs for comparing & applying generated texts.
 - [X] Add an option for setting safety threshold.
 - [X] Handle multiple content parts (skipping non-text and thought parts).
 - [ ] Handle multiple candidates (would need a picker UI).
+- [ ] Add nice UIs for comparing & applying generated texts.
+- [X] Add tests.
 
 ## License
 

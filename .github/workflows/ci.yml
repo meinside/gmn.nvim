@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # nightly tracks neovim's HEAD and occasionally breaks for upstream reasons;
+    # don't fail the workflow because of it. min/stable still gate the build.
+    continue-on-error: ${{ matrix.neovim == 'nightly' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        neovim: [v0.10.0, stable, nightly]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Neovim (${{ matrix.neovim }})
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.neovim }}
+
+      - name: Run tests
+        run: nvim --headless --clean -u NONE -l tests/run.lua
