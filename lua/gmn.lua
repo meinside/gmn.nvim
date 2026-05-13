@@ -13,6 +13,12 @@ function M.setup(opts)
 	config.override(opts)
 end
 
+-- Cancels the currently in-flight generation request, if any.
+-- Returns true if a request was cancelled, false otherwise.
+function M.cancel()
+	return generation.cancel()
+end
+
 -- Generates and returns text with given prompts.
 --
 -- opts is a table with the following keys:
@@ -30,8 +36,15 @@ function M.generate_text(prompts, callback, opts)
 			if res ~= nil and res.candidates ~= nil and #res.candidates > 0 then
 				local candidate = res.candidates[1]
 				if candidate.content ~= nil and candidate.content.parts ~= nil and #candidate.content.parts > 0 then
-					for i, _ in ipairs(candidate.content.parts) do
-						parts[i] = candidate.content.parts[i].text
+					-- collect only text parts; skip thought summaries and non-text parts
+					-- (e.g. functionCall) so the resulting array has no gaps.
+					for _, p in ipairs(candidate.content.parts) do
+						if p.text and not p.thought then
+							parts[#parts + 1] = p.text
+						end
+					end
+					if #parts == 0 then
+						err = "No text parts returned from Gemini API."
 					end
 				else
 					err = "No content parts returned from Gemini API."
