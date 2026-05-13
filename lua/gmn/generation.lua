@@ -20,6 +20,23 @@ end
 
 local M = {}
 
+-- the currently in-flight request, if any.
+-- `job` is the vim.system handle, `cancelled` is a per-request flag set by M.cancel().
+local current = nil
+
+-- cancel the currently in-flight request (if any).
+-- returns true if a request was cancelled, false otherwise.
+function M.cancel()
+	if current == nil then
+		return false
+	end
+	current.cancelled = true
+	pcall(function()
+		current.job:kill("sigterm")
+	end)
+	return true
+end
+
 -- generate system instruction
 local function system_instruction(model)
 	return string.format(
@@ -135,6 +152,11 @@ function M.text(prompts, callback, opts)
 		params.generationConfig = generation_config
 	end
 
+	-- if a previous request is still running, cancel it before starting a new one
+	if current ~= nil then
+		M.cancel()
+	end
+
 	local progress_job = nil
 	if config.options.verbose then
 		progress_job = progress.start("Sending request to: " .. endpoint, vim.log.levels.DEBUG)
@@ -142,9 +164,13 @@ function M.text(prompts, callback, opts)
 		progress_job = progress.start("Generating...", vim.log.levels.INFO)
 	end
 
+	-- per-request state captured in this closure, so concurrent cancel/restart
+	-- of a different request can't tamper with this one's bookkeeping.
+	local req = { job = nil, cancelled = false }
+
 	-- send request,
 	local timeout_secs = tostring(math.ceil(config.options.timeout / 1000))
-	vim.system(
+	req.job = vim.system(
 		{
 			"curl",
 			"-s",
@@ -166,7 +192,18 @@ function M.text(prompts, callback, opts)
 			local err = nil
 			local res = nil
 
-			if result.code ~= 0 then
+			-- only clear the module-level pointer if this request is still the
+			-- "current" one; a newer request may have already replaced it.
+			if current == req then
+				current = nil
+			end
+			local was_cancelled = req.cancelled
+
+			if was_cancelled then
+				msg = "Generation cancelled."
+				level = vim.log.levels.WARN
+				err = "cancelled"
+			elseif result.code ~= 0 then
 				msg = config.options.verbose and string.format("curl exit %s: %s", result.code, result.stderr)
 					or "Generation failed."
 				level = vim.log.levels.ERROR
@@ -208,6 +245,7 @@ function M.text(prompts, callback, opts)
 			end
 		end)
 	)
+	current = req
 end
 
 return M

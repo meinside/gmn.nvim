@@ -6,37 +6,6 @@
 
 local M = {}
 
--- splits a string with delimiters
---
--- https://stackoverflow.com/questions/19262761/lua-need-to-split-at-comma
-function M.split(source, delimiters)
-	local elements = {}
-	local pattern = "([^" .. delimiters .. "]+)"
-	_ = string.gsub(source, pattern, function(value)
-		elements[#elements + 1] = value
-	end)
-	return elements
-end
-
--- joins a string array with given delimiter
-function M.join(strs, delim)
-	return table.concat(strs, delim)
-end
-
--- checks if str has given prefix
-function M.has_prefix(str, prefix)
-	return str:sub(1, #prefix) == prefix
-end
-
--- sub-slices given array
-function M.subslice(array, start_index, end_index)
-	local sub_array = {}
-	for i = start_index, end_index do
-		sub_array[#sub_array + 1] = array[i]
-	end
-	return sub_array
-end
-
 -- split each line with '\n'
 function M.split_lines(original)
 	local lines = {}
@@ -58,9 +27,9 @@ end
 
 -- strips outermost codeblock markdown off from given string
 function M.strip_outermost_codeblock(str)
-	local lines = M.split(str, "\n")
-	if #lines >= 2 and M.has_prefix(lines[1], "```") and lines[#lines] == "```" then
-		return M.join(M.subslice(lines, 2, #lines - 1), "\n")
+	local lines = vim.split(str, "\n", { plain = true })
+	if #lines >= 2 and vim.startswith(lines[1], "```") and lines[#lines] == "```" then
+		return table.concat(vim.list_slice(lines, 2, #lines - 1), "\n")
 	end
 	return str
 end
@@ -69,6 +38,16 @@ end
 function M.execute_command(command)
 	local output = vim.fn.system(command)
 	return output
+end
+
+-- returns the directory of the current buffer (for use as a git working dir).
+-- falls back to the current working directory if the buffer has no name.
+function M.current_buffer_dir()
+	local name = vim.api.nvim_buf_get_name(0)
+	if name == nil or name == "" then
+		return vim.fn.getcwd()
+	end
+	return vim.fn.fnamemodify(name, ":h")
 end
 
 return M

@@ -8,6 +8,7 @@ local cmdGenerateText = "GeminiGenerate"
 local cmdGenerateTextWithSearch = "GeminiGenerateWithSearch"
 local cmdGenerateTextWithURLFetch = "GeminiGenerateWithURLFetch"
 local cmdGenerateGitCommitLog = "GeminiGenerateGitCommitLog"
+local cmdCancel = "GeminiCancel"
 
 local gmn = require("gmn")
 local config = require("gmn/config")
@@ -237,7 +238,10 @@ Here is the result of `git diff --staged`:
 
 	-- generate texts with given prompt,
 	if opts.range == 0 then -- if there was no selected range,
-		local text = util.execute_command("git diff --staged")
+		local buf_dir = util.current_buffer_dir()
+		local text = util.execute_command(
+			string.format("git -C %s diff --staged", vim.fn.shellescape(buf_dir))
+		)
 
 		if vim.trim(text) == "" then
 			warn("No staged changes found. Use `git add` to stage changes first.")
@@ -280,3 +284,11 @@ Here is the result of `git diff --staged`:
 		)
 	end
 end, { range = true })
+
+-- :GeminiCancel
+--   cancel the currently in-flight Gemini request, if any.
+vim.api.nvim_create_user_command(cmdCancel, function()
+	if not gmn.cancel() then
+		warn("No generation in progress.")
+	end
+end, {})

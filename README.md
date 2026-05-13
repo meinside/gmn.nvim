@@ -133,6 +133,16 @@ For generating with a prompt and contents fetched from URLs in the selected rang
 ```
 
 
+### Cancelling an In-Flight Request
+
+If a generation is taking too long, cancel it with:
+
+```
+:GeminiCancel
+```
+
+Calling any `:GeminiGenerate*` command while another one is in flight also cancels the previous one.
+
 ### Git Commit Message Generation
 
 #### Generate a Git Commit Message with Current Buffer
@@ -161,11 +171,22 @@ and replace the range with the generated one.
 
 ## Usage (with lua)
 
+`generate_text` is asynchronous. Pass a callback to receive the result:
+
 ```lua
-local generated, err = require("gmn").generate_text({ "hello, ", "how are you doing?" })
-if err == nil then
-  print(vim.inspect(generated))
-end
+require("gmn").generate_text(
+  { "hello, ", "how are you doing?" },
+  function(parts, err)
+    if err ~= nil then
+      vim.notify(err, vim.log.levels.ERROR)
+      return
+    end
+    print(vim.inspect(parts))
+  end,
+  -- optional opts:
+  -- { thinking = true, web_search = true, fetch_urls = true }
+  {}
+)
 ```
 
 ## Todos / Improvements
@@ -175,7 +196,8 @@ end
 - [X] Strip unwanted markdown codeblock around the generated texts.
 - [ ] Add nice UIs for comparing & applying generated texts.
 - [X] Add an option for setting safety threshold.
-- [ ] Handle multiple number of candidates and content parts.
+- [X] Handle multiple content parts (skipping non-text and thought parts).
+- [ ] Handle multiple candidates (would need a picker UI).
 
 ## License
 
