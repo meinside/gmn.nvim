@@ -238,9 +238,15 @@ Here is the result of `git diff --staged`:
 
 	-- generate texts with given prompt,
 	if opts.range == 0 then -- if there was no selected range,
-		local buf_dir = util.current_buffer_dir()
+		-- always run from the worktree root, never from inside .git/
+		-- (e.g. when invoked from a COMMIT_EDITMSG buffer).
+		local worktree = util.git_worktree_root(util.current_buffer_dir())
+		if worktree == nil then
+			notify_error("Not inside a git repository.")
+			return
+		end
 		local text = util.execute_command(
-			string.format("git -C %s diff --staged", vim.fn.shellescape(buf_dir))
+			string.format("git -C %s diff --staged", vim.fn.shellescape(worktree))
 		)
 
 		if vim.trim(text) == "" then
@@ -255,7 +261,9 @@ Here is the result of `git diff --staged`:
 		gmn.generate_text(
 			prompts,
 			make_callback(function(lines)
-				ui.replace_whole_text(lines)
+				-- preserve git's helper comments in COMMIT_EDITMSG and similar
+				-- buffers; replace only the message portion above them.
+				ui.replace_message_preserving_comments(lines)
 			end, { ensure_empty_line = true }),
 			{ thinking = true }
 		)

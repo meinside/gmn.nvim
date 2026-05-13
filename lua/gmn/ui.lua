@@ -42,6 +42,26 @@ function M.replace_whole_text(lines)
 	vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
 end
 
+-- replace only the message portion of a buffer that has git-style comment
+-- lines (lines beginning with '#'), leaving the comment block intact.
+-- if no comment lines exist, falls back to replacing the whole buffer.
+function M.replace_message_preserving_comments(lines)
+	local existing = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+	local first_comment = nil
+	for i, line in ipairs(existing) do
+		if line:sub(1, 1) == "#" then
+			first_comment = i
+			break
+		end
+	end
+	if first_comment == nil then
+		M.replace_whole_text(lines)
+		return
+	end
+	-- replace [0 .. first_comment-1) with the new message; keep the rest.
+	vim.api.nvim_buf_set_lines(0, 0, first_comment - 1, false, lines)
+end
+
 -- insert given text at current cursor position
 function M.insert_text_at_current_cursor(lines)
 	local row, col = unpack(vim.api.nvim_win_get_cursor(0))

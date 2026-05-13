@@ -50,4 +50,30 @@ function M.current_buffer_dir()
 	return vim.fn.fnamemodify(name, ":h")
 end
 
+-- resolves the worktree root for the given starting directory.
+-- handles the case where the buffer lives inside the .git directory itself
+-- (e.g. COMMIT_EDITMSG): running `git -C .git/...` puts git into a bare-repo
+-- mode where output (warnings, diff prefixes) becomes inconsistent.
+-- returns nil if `dir` isn't inside any git repository.
+function M.git_worktree_root(dir)
+	local result = vim.fn.systemlist({ "git", "-C", dir, "rev-parse", "--show-toplevel" })
+	if vim.v.shell_error == 0 and #result > 0 then
+		return result[1]
+	end
+
+	-- maybe inside .git/. ask git for the .git dir, then take its parent.
+	-- the result may be relative to `dir`; resolve it accordingly.
+	result = vim.fn.systemlist({ "git", "-C", dir, "rev-parse", "--git-common-dir" })
+	if vim.v.shell_error ~= 0 or #result == 0 then
+		return nil
+	end
+	local git_dir = result[1]
+	if git_dir:sub(1, 1) ~= "/" then
+		git_dir = dir .. "/" .. git_dir
+	end
+	-- normalize and strip the trailing /.git component
+	git_dir = vim.fn.fnamemodify(git_dir, ":p"):gsub("/+$", "")
+	return vim.fn.fnamemodify(git_dir, ":h")
+end
+
 return M

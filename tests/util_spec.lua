@@ -69,4 +69,20 @@ function M.current_buffer_dir_falls_back_to_cwd_for_unnamed()
 	h.eq(util.current_buffer_dir(), vim.fn.getcwd())
 end
 
+-- regression: COMMIT_EDITMSG lives inside .git/, and running git from there
+-- puts git into a bare-repo mode with mangled output (warnings on stderr,
+-- diff prefixes c/i/ instead of a/b/). git_worktree_root must climb out
+-- to the actual worktree.
+function M.git_worktree_root_resolves_from_dot_git_dir()
+	local repo_root = vim.fn.getcwd() -- tests are invoked from project root
+	h.eq(util.git_worktree_root(repo_root), repo_root)
+	h.eq(util.git_worktree_root(repo_root .. "/.git"), repo_root)
+	h.eq(util.git_worktree_root(repo_root .. "/lua/gmn"), repo_root)
+end
+
+function M.git_worktree_root_returns_nil_outside_a_repo()
+	-- /private is not a git repository on macOS, and not a repo on linux either.
+	h.eq(util.git_worktree_root("/"), nil)
+end
+
 return M
